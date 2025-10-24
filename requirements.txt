@@ -1,0 +1,16 @@
+langchain==0.0.340
+langchain-huggingface
+langchain-chroma
+openai
+sentence-transformers>=2.2.2
+chromadb
+wikipedia
+streamlit
+scikit-learn
+numpy
+faiss-cpu
+python-dotenv
+tqdm
+rich
+llama-cpp-python
+gdown
