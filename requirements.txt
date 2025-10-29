@@ -6,7 +6,7 @@ langchainhub==0.1.15
 langsmith==0.1.77
 
 # === Embeddings and VectorStore ===
-sentence-transformers==2.2.2
+sentence-transformers
 chromadb==0.5.0
 faiss-cpu
 numpy
