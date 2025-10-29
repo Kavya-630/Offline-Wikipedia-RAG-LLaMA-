@@ -1,5 +1,5 @@
-# qa_chain.py
 import os
+import gdown
 from langchain.chains import RetrievalQA
 from langchain.memory import ConversationBufferMemory
 from langchain_community.llms import LlamaCpp, OpenAI
@@ -8,13 +8,20 @@ from langchain_community.llms import LlamaCpp, OpenAI
 # LLaMA model path configuration
 # ---------------------------------------------------------------------
 LLAMA_PATH = os.getenv("LLAMA_MODEL_PATH", "models/mistral-7b-instruct-v0.2.Q4_K_M.gguf")
+LLAMA_URL = "https://drive.google.com/uc?id=1mgbDYKRpG0F4hMpvAZ2uUgnHuTFV21zL"
 
-# Verify model presence
+# ✅ Auto-download model if missing
+os.makedirs(os.path.dirname(LLAMA_PATH), exist_ok=True)
 if not os.path.exists(LLAMA_PATH):
-    raise FileNotFoundError(
-        f"❌ LLaMA model not found at '{LLAMA_PATH}'.\n"
-        f"Please download it first using 'download_model.py' or mount your Drive."
-    )
+    print(f"📥 Model not found locally. Downloading from {LLAMA_URL} ...")
+    try:
+        gdown.download(LLAMA_URL, LLAMA_PATH, quiet=False)
+        print(f"✅ Model downloaded successfully to {LLAMA_PATH}")
+    except Exception as e:
+        print(f"❌ Failed to download model: {e}")
+        raise FileNotFoundError(
+            f"Could not download LLaMA model. Please ensure the link is correct: {LLAMA_URL}"
+        )
 
 # ---------------------------------------------------------------------
 # QA chain builder
@@ -29,7 +36,7 @@ def build_qa_chain(retriever, use_memory: bool = True, use_llama: bool = False):
             model_path=LLAMA_PATH,
             temperature=0.2,
             max_new_tokens=512,
-            n_ctx=2048,  # still valid, but safe to keep as int
+            n_ctx=2048,
             verbose=False,
             n_threads=4,
         )
