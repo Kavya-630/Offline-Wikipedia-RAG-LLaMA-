@@ -28,11 +28,12 @@ def build_qa_chain(retriever, use_memory: bool = True, use_llama: bool = False):
         llm = LlamaCpp(
             model_path=LLAMA_PATH,
             temperature=0.2,
-            max_tokens=512,
-            n_ctx=2048,
+            max_new_tokens=512,
+            n_ctx=2048,  # still valid, but safe to keep as int
             verbose=False,
             n_threads=4,
         )
+
     else:
         OPENAI_KEY = os.getenv("OPENAI_API_KEY")
         if not OPENAI_KEY:
