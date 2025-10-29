@@ -11,7 +11,7 @@ from utils import format_sources
 # ==============================
 load_dotenv()
 
-LLAMA_MODEL_PATH = os.getenv("LLAMA_MODEL_PATH", "https://drive.google.com/uc?id=1mgbDYKRpG0F4hMpvAZ2uUgnHuTFV21zL"
+LLAMA_MODEL_PATH = os.getenv("LLAMA_MODEL_PATH", "https://drive.google.com/uc?id=1bquBi_ccK4XDsatiHZsucysPUBXzmga6"
 )
 PERSIST_DIR = os.getenv("PERSIST_DIR", "vectorstore")
 EMBED_MODEL = os.getenv("EMBED_MODEL", "sentence-transformers/all-MiniLM-L6-v2")
@@ -130,7 +130,7 @@ from utils import format_sources
 load_dotenv()
 LLAMA_MODEL_PATH = os.getenv(
     "LLAMA_MODEL_PATH",
-    "https://drive.google.com/uc?id=1mgbDYKRpG0F4hMpvAZ2uUgnHuTFV21zL",
+    "https://drive.google.com/uc?id=1bquBi_ccK4XDsatiHZsucysPUBXzmga6",
 )
 PERSIST_DIR = os.getenv("PERSIST_DIR", "vectorstore")
 EMBED_MODEL = os.getenv("EMBED_MODEL", "sentence-transformers/all-MiniLM-L6-v2")
@@ -226,7 +226,7 @@ with st.sidebar:
 # ==============================
 # Chat Section (Main Area)
 # ==============================
-st.title("💬 Offline Ask Wikipedia — Local LLaMA RAG")
+st.title("💬 Offline Ask Wikipedia — Local PHI-2 RAG")
 
 if "chat_history" not in st.session_state:
     st.session_state.chat_history = []
@@ -269,3 +269,4 @@ if st.session_state.chat_history:
             st.markdown(format_sources(docs))
         except Exception:
             st.write("No sources found.")
+
