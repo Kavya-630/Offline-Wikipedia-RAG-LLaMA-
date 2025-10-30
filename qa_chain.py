@@ -7,7 +7,7 @@ from langchain_community.llms import LlamaCpp, OpenAI
 # ---------------------------------------------------------------------
 # LLaMA model path configuration
 # ---------------------------------------------------------------------
-LLAMA_PATH = os.getenv("LLAMA_MODEL_PATH", "models/mistral-7b-instruct-v0.2.Q4_K_M.gguf")
+LLAMA_PATH = os.getenv("LLAMA_MODEL_PATH", "models/phi-2.Q4_K_S.gguf")
 LLAMA_URL = "https://drive.google.com/uc?id=1mgbDYKRpG0F4hMpvAZ2uUgnHuTFV21zL"
 
 # ✅ Auto-download model if missing
@@ -34,9 +34,9 @@ def build_qa_chain(retriever, use_memory: bool = True, use_llama: bool = False):
         print(f"[INFO] Using local LLaMA model from {LLAMA_PATH}")
         llm = LlamaCpp(
             model_path=LLAMA_PATH,
-            temperature=0.2,
+            temperature=0.3,
             max_new_tokens=512,
-            n_ctx=2048,
+            n_ctx=1024,
             verbose=False,
             n_threads=4,
         )
@@ -58,3 +58,4 @@ def build_qa_chain(retriever, use_memory: bool = True, use_llama: bool = False):
         memory=memory,
     )
     return qa
+
