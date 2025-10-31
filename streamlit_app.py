@@ -221,3 +221,4 @@ if st.button("🧹 Clear Chat"):
     st.session_state.edit_index = None
     st.rerun()
 
+st.markdown("<div style='height:80px;'></div>", unsafe_allow_html=True)
