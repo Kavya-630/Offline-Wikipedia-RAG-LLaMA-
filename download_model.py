@@ -2,15 +2,16 @@
 import os
 import gdown
 
-url = "https://drive.google.com/uc?export=download&id=1Yy3ItSh6tFbGN75_Vd00kX068GN9jESz"
+url = "https://drive.google.com/uc?export=download&id=1mgbDYKRpG0F4hMpvAZ2uUgnHuTFV21zL"
 
 
-output = "models/tinyllama-1.1b-chat.Q4_K_M.gguf"
+output = "models/mistral-7b-instruct-v0.2.Q4_K_M.gguf"
 
 os.makedirs(os.path.dirname(output), exist_ok=True)
 
-print("Downloading TinyLlama model file from Google Drive...")
+print("Downloading Llama model file from Google Drive...")
 gdown.download(url, output, quiet=False)
 print(f"✅ Model saved to {output}")
+
 
 
