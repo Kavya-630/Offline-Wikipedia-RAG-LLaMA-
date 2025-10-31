@@ -34,7 +34,7 @@ def build_qa_chain(retriever, use_memory: bool = True, use_llama: bool = False):
         llm = LlamaCpp(
             model_path=LLAMA_PATH,
             temperature=0.7,
-            max_new_tokens=512,
+            max_new_tokens=1024,
             n_ctx=4096,
             verbose=False,
             n_batch=512,
@@ -58,6 +58,7 @@ def build_qa_chain(retriever, use_memory: bool = True, use_llama: bool = False):
         memory=memory,
     )
     return qa
+
 
 
 
