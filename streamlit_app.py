@@ -33,47 +33,67 @@ st.set_page_config(page_title="Offline Wikipedia Chat", page_icon="🧠", layout
 # =====================================
 # 🎨 Custom CSS
 # =====================================
-st.markdown("""
-<style>
-#MainMenu, footer {visibility: hidden;}
-.stApp {
-    background-color: #0e1117;
-    color: #e1e1e1;
-    font-family: 'Segoe UI', 'Roboto', sans-serif;
-}
-[data-testid="stSidebar"] {
-    background-color: #111418;
-    color: #ddd;
-    border-right: 1px solid #222;
-}
-.user-msg {
-    background-color: #1e3a8a;
-    color: #ffffff;
-    padding: 10px 16px;
-    border-radius: 16px;
-    margin: 8px 0;
-    width: fit-content;
-    max-width: 80%;
-    align-self: flex-end;
-    border: 1px solid #2563eb;
-    margin-left: auto;
-}
-.bot-msg {
-    background-color: #374151;
-    color: #e5e7eb;
-    padding: 10px 16px;
-    border-radius: 16px;
-    margin: 8px 0;
-    width: fit-content;
-    max-width: 80%;
-    border: 1px solid #4b5563;
-    margin-right: auto;
-}
-h1, h2, h3 {
-    color: #38bdf8;
-}
-</style>
-""", unsafe_allow_html=True)
+# ==============================
+# 📥 Fixed Bottom Input Bar
+# ==============================
+st.markdown(
+    """
+    <style>
+    /* Keep input bar fixed at bottom */
+    .fixed-input {
+        position: fixed;
+        bottom: 0;
+        left: 0;
+        right: 0;
+        background-color: #0e1117;
+        padding: 10px 20px;
+        border-top: 1px solid #333;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        z-index: 100;
+    }
+
+    .fixed-input textarea {
+        width: 70%;
+        border-radius: 10px;
+        background-color: #1f2937;
+        color: white;
+        border: 1px solid #374151;
+        padding: 10px;
+        resize: none;
+    }
+
+    .send-btn {
+        margin-left: 10px;
+        background-color: #2563eb;
+        color: white;
+        border-radius: 10px;
+        border: none;
+        padding: 10px 16px;
+        cursor: pointer;
+        font-weight: bold;
+    }
+
+    .send-btn:hover {
+        background-color: #1d4ed8;
+    }
+    </style>
+    """,
+    unsafe_allow_html=True
+)
+
+# Create fixed input box at bottom
+st.markdown('<div class="fixed-input">', unsafe_allow_html=True)
+
+col1, col2 = st.columns([8, 1])
+with col1:
+    query = st.chat_input("Type your question here...")
+with col2:
+    send_clicked = st.button("🚀 Send", key="send_btn")
+
+st.markdown("</div>", unsafe_allow_html=True)
+
 
 # =====================================
 # 🌍 Environment Setup
@@ -200,3 +220,4 @@ if st.button("🧹 Clear Chat"):
     st.session_state.chat_history = []
     st.session_state.edit_index = None
     st.rerun()
+
