@@ -3,6 +3,7 @@ os.environ["TOKENIZERS_PARALLELISM"] = "false"
 os.environ["CHROMADB_TELEMETRY"] = "OFF"
 os.environ["PYTORCH_JIT_LOG_LEVEL"] = "0"
 os.environ["PYTORCH_JIT_LOG_LEVEL_FLAGS"] = "0"
+
 import streamlit as st
 from dotenv import load_dotenv
 from wiki_loader import fetch_wikipedia_pages
@@ -14,9 +15,10 @@ from utils import format_sources
 # Environment setup
 # ==============================
 load_dotenv()
+
 LLAMA_MODEL_PATH = os.getenv(
     "LLAMA_MODEL_PATH",
-    "https://drive.google.com/uc?id=1bquBi_ccK4XDsatiHZsucysPUBXzmga6",
+    "https://drive.google.com/uc?export=download&id=1Yy3ItSh6tFbGN75_Vd00kX068GN9jESz",
 )
 PERSIST_DIR = os.getenv("PERSIST_DIR", "vectorstore")
 EMBED_MODEL = os.getenv("EMBED_MODEL", "sentence-transformers/all-MiniLM-L6-v2")
@@ -27,27 +29,34 @@ os.makedirs(PERSIST_DIR, exist_ok=True)
 # ==============================
 st.set_page_config(page_title="Offline Wikipedia Chat", page_icon="🧠", layout="wide")
 
-# Custom CSS for ChatGPT look
+# ==============================
+# Custom CSS (ChatGPT style)
+# ==============================
 st.markdown("""
 <style>
-/* Hide default Streamlit menu and footer */
 #MainMenu, footer {visibility: hidden;}
-
-/* Global styling */
-body, .stApp {
+.stApp {
     background-color: #0e1117;
     color: #e1e1e1;
     font-family: 'Segoe UI', 'Roboto', sans-serif;
 }
-
-/* Title styling */
 h1 {
     text-align: center;
     color: #00A67E;
     margin-top: 0.5em;
 }
-
-/* Chat message containers */
+[data-testid="stSidebar"] {
+    background-color: #111418;
+    color: #ddd;
+    border-right: 1px solid #222;
+}
+.chat-container {
+    display: flex;
+    flex-direction: column-reverse;
+    overflow-y: auto;
+    height: 70vh;
+    padding: 1rem;
+}
 .user-msg {
     background-color: #1e1e1e;
     color: #ffffff;
@@ -59,7 +68,6 @@ h1 {
     align-self: flex-end;
     border: 1px solid #333;
 }
-
 .bot-msg {
     background-color: #202123;
     color: #e1e1e1;
@@ -70,12 +78,6 @@ h1 {
     max-width: 80%;
     border: 1px solid #333;
 }
-
-/* Sidebar styling */
-[data-testid="stSidebar"] {
-    background-color: #111418;
-    color: #ddd;
-}
 </style>
 """, unsafe_allow_html=True)
 
@@ -83,11 +85,13 @@ h1 {
 # Sidebar configuration
 # ==============================
 with st.sidebar:
-    st.title("⚙️ Settings")
-
-    topic_input = st.text_area("Topics to fetch (one per line)",
-                               value="Quantum mechanics\nAlbert Einstein")
-    max_pages = st.number_input("Max pages per topic", 1, 5, 2)
+    st.title("⚙️ Wikipedia Indexing")
+    topic_input = st.text_area(
+        "Enter topics (one per line):",
+        value="Artificial intelligence\nPython programming\nBlack holes",
+        help="You can add any topics you like!"
+    )
+    max_pages = st.number_input("Max pages per topic", 1, 10, 2)
     chunk_size = st.number_input("Chunk size", 100, 2000, 500)
     chunk_overlap = st.number_input("Chunk overlap", 0, 500, 50)
 
@@ -110,14 +114,26 @@ with st.sidebar:
     st.write(f"**Vectorstore Directory:** {PERSIST_DIR}")
 
 # ==============================
-# Chat Section (Main Area)
+# Main Chat Section
 # ==============================
-st.title("💬 Offline Ask Wikipedia — Local PHI-2 RAG")
+st.title("💬 Chat with Offline Wikipedia")
 
+# Keep chat history
 if "chat_history" not in st.session_state:
     st.session_state.chat_history = []
 
-query = st.chat_input("Ask a question about your indexed topics...")
+# Chat display container
+chat_container = st.container()
+with chat_container:
+    for msg in st.session_state.chat_history:
+        if msg["role"] == "user":
+            st.markdown(f"<div class='user-msg'>🧑‍💻 {msg['text']}</div>", unsafe_allow_html=True)
+        else:
+            st.markdown(f"<div class='bot-msg'>🤖 {msg['text']}</div>", unsafe_allow_html=True)
+
+# Chat input at bottom (like ChatGPT)
+st.markdown("<br>", unsafe_allow_html=True)
+query = st.chat_input("Type your question and press Enter...")
 
 if query:
     try:
@@ -126,34 +142,29 @@ if query:
         with st.spinner("🤖 Thinking..."):
             result = qa(query)
 
-        answer = result.get("result") or result.get("answer")
+        answer = result.get("result") or result.get("answer") or "Sorry, I couldn’t generate an answer."
         docs = result.get("source_documents", [])
 
+        # Store conversation
         st.session_state.chat_history.append({"role": "user", "text": query})
         st.session_state.chat_history.append({"role": "assistant", "text": answer})
+
+        # Refresh chat display dynamically
+        st.experimental_rerun()
 
     except Exception as e:
         st.error(f"Error during QA generation: {e}")
 
-# Display Chat Messages
-for msg in st.session_state.chat_history:
-    if msg["role"] == "user":
-        st.markdown(f"<div class='user-msg'>🧑‍💻 {msg['text']}</div>", unsafe_allow_html=True)
-    else:
-        st.markdown(f"<div class='bot-msg'>🤖 {msg['text']}</div>", unsafe_allow_html=True)
-
 # ==============================
-# Optional: Display Sources at bottom
+# Optional: Sources display
 # ==============================
 if st.session_state.chat_history:
     last_bot_msg = next((m for m in reversed(st.session_state.chat_history)
                          if m["role"] == "assistant"), None)
     if last_bot_msg:
-        st.markdown("<br><hr>", unsafe_allow_html=True)
+        st.markdown("<hr>", unsafe_allow_html=True)
         st.subheader("📚 Sources (if available)")
         try:
             st.markdown(format_sources(docs))
         except Exception:
             st.write("No sources found.")
-
-
