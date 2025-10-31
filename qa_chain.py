@@ -7,8 +7,8 @@ from langchain_community.llms import LlamaCpp, OpenAI
 # ---------------------------------------------------------------------
 # LLaMA model path configuration
 # ---------------------------------------------------------------------
-LLAMA_PATH = os.getenv("LLAMA_MODEL_PATH", "models/phi-2.Q4_K_S.gguf")
-LLAMA_URL = "https://drive.google.com/uc?id=1bquBi_ccK4XDsatiHZsucysPUBXzmga6"
+LLAMA_PATH = os.getenv("LLAMA_MODEL_PATH", "models/tinyllama-1.1b-chat.Q4_K_M.gguf")
+LLAMA_URL = "https://drive.google.com/uc?export=download&id=1Yy3ItSh6tFbGN75_Vd00kX068GN9jESz"
 # ✅ Auto-download model if missing
 os.makedirs(os.path.dirname(LLAMA_PATH), exist_ok=True)
 if not os.path.exists(LLAMA_PATH):
@@ -57,5 +57,6 @@ def build_qa_chain(retriever, use_memory: bool = True, use_llama: bool = False):
         memory=memory,
     )
     return qa
+
 
 
