@@ -17,7 +17,7 @@ os.environ["STREAMLIT_DISABLE_UPDATE_CHECK"] = "true"
 # 🧠 Load Environment
 # =====================================
 load_dotenv()
-LLAMA_MODEL_PATH = os.getenv("LLAMA_MODEL_PATH", "models/tinyllama-1.1b-chat.Q4_K_M.gguf")
+LLAMA_MODEL_PATH = os.getenv("LLAMA_MODEL_PATH", "models/mistral-7b-instruct-v0.2.Q4_K_M.gguf")
 PERSIST_DIR = os.getenv("PERSIST_DIR", "vectorstore")
 EMBED_MODEL = os.getenv("EMBED_MODEL", "sentence-transformers/all-MiniLM-L6-v2")
 os.makedirs(PERSIST_DIR, exist_ok=True)
@@ -196,7 +196,7 @@ st.markdown("<div style='height:120px;'></div>", unsafe_allow_html=True)
 # =====================================
 # 💬 Chat Input (ChatGPT style)
 # =====================================
-query = st.chat_input("💬 Type your question here...")
+query = st.chat_input("Type your question here...")
 
 # =====================================
 # 🚀 Process Input
@@ -206,3 +206,4 @@ if query:
     answer = generate_answer(query)
     st.session_state.chat_history.append({"role": "assistant", "text": answer})
     st.rerun()
+
