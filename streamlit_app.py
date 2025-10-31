@@ -3,6 +3,12 @@ os.environ["TOKENIZERS_PARALLELISM"] = "false"
 os.environ["CHROMADB_TELEMETRY"] = "OFF"
 os.environ["PYTORCH_JIT_LOG_LEVEL"] = "0"
 os.environ["PYTORCH_JIT_LOG_LEVEL_FLAGS"] = "0"
+os.environ["STREAMLIT_OFFLINE"] = "true"
+os.environ["STREAMLIT_DISABLE_TELEMETRY"] = "true"
+os.environ["STREAMLIT_DISABLE_UPDATE_CHECK"] = "true"
+os.environ["NO_PROXY"] = "*"
+os.environ["http_proxy"] = ""
+os.environ["https_proxy"] = ""
 
 import streamlit as st
 from dotenv import load_dotenv
@@ -155,4 +161,5 @@ if query:
     st.session_state.chat_history.append({"role": "assistant", "text": answer})
 
     st.rerun()
+
 
