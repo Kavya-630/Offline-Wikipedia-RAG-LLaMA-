@@ -131,28 +131,24 @@ for msg in st.session_state.chat_history:
     else:
         st.markdown(f"<div class='bot-msg'>🤖 {msg['text']}</div>", unsafe_allow_html=True)
 
-# Input box
+#input box
+
 query = st.chat_input("Type your question and press Enter...")
 
 if query:
-    retriever = get_retriever(k=3)
+    retriever = get_retriever(k=1)
     qa = build_qa_chain(retriever, use_memory=False, use_llama=True)
 
     with st.spinner("🤖 Thinking..."):
         try:
             result = qa(query)
             answer = result.get("result") or result.get("answer") or "Sorry, I couldn’t generate an answer."
-        
-            # ✅ Format question–answer pairs clearly
-            answer = answer.replace("Question:", "\n\n**Question:**").replace("Helpful Answer:", "\n\n**Helpful Answer:**")
-        
         except Exception as e:
             answer = f"⚠️ Error: {e}"
 
-
-    # Append to history
     st.session_state.chat_history.append({"role": "user", "text": query})
     st.session_state.chat_history.append({"role": "assistant", "text": answer})
 
     st.rerun()
 
+  
