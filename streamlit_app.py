@@ -9,7 +9,46 @@ from dotenv import load_dotenv
 from wiki_loader import fetch_wikipedia_pages
 from retriever import build_or_load_vectorstore, get_retriever
 from qa_chain import build_qa_chain
-from utils import format_sources
+# --- Custom CSS ---
+st.markdown(
+    """
+    <style>
+    /* App background */
+    .stApp {
+        background-color: #0e1117; /* dark gray background */
+        color: #ffffff; /* default text color */
+    }
+
+    /* Chat container */
+    .chat-message {
+        border-radius: 10px;
+        padding: 10px;
+        margin-bottom: 10px;
+    }
+
+    /* User message */
+    .user-msg {
+        background-color: #1e3a8a; /* blue tone */
+        color: white;
+        border: 1px solid #2563eb;
+    }
+
+    /* Bot message */
+    .bot-msg {
+        background-color: #374151; /* darker gray */
+        color: #e5e7eb;
+        border: 1px solid #4b5563;
+    }
+
+    /* Header or title styling */
+    h1, h2, h3 {
+        color: #38bdf8; /* cyan highlight */
+    }
+
+    </style>
+    """,
+    unsafe_allow_html=True
+)
 
 # ==============================
 # Environment setup
@@ -25,12 +64,12 @@ EMBED_MODEL = os.getenv("EMBED_MODEL", "sentence-transformers/all-MiniLM-L6-v2")
 os.makedirs(PERSIST_DIR, exist_ok=True)
 
 # ==============================
-# Streamlit page configuration
+# Streamlit configuration
 # ==============================
 st.set_page_config(page_title="Offline Wikipedia Chat", page_icon="🧠", layout="wide")
 
 # ==============================
-# Custom CSS (ChatGPT style)
+# Custom CSS (ChatGPT-style)
 # ==============================
 st.markdown("""
 <style>
@@ -49,13 +88,6 @@ h1 {
     background-color: #111418;
     color: #ddd;
     border-right: 1px solid #222;
-}
-.chat-container {
-    display: flex;
-    flex-direction: column-reverse;
-    overflow-y: auto;
-    height: 70vh;
-    padding: 1rem;
 }
 .user-msg {
     background-color: #1e1e1e;
@@ -89,7 +121,7 @@ with st.sidebar:
     topic_input = st.text_area(
         "Enter topics (one per line):",
         value="Artificial intelligence\nPython programming\nBlack holes",
-        help="You can add any topics you like!"
+        help="Add any Wikipedia topics here!"
     )
     max_pages = st.number_input("Max pages per topic", 1, 10, 2)
     chunk_size = st.number_input("Chunk size", 100, 2000, 500)
@@ -99,7 +131,6 @@ with st.sidebar:
         topics = [t.strip() for t in topic_input.splitlines() if t.strip()]
         with st.spinner("Fetching and indexing Wikipedia pages..."):
             docs = fetch_wikipedia_pages(topics, max_pages_per_topic=max_pages)
-
         if not docs:
             st.warning("⚠️ No documents fetched. Try different topics or increase max pages.")
         else:
@@ -122,49 +153,29 @@ st.title("💬 Chat with Offline Wikipedia")
 if "chat_history" not in st.session_state:
     st.session_state.chat_history = []
 
-# Chat display container
-chat_container = st.container()
-with chat_container:
-    for msg in st.session_state.chat_history:
-        if msg["role"] == "user":
-            st.markdown(f"<div class='user-msg'>🧑‍💻 {msg['text']}</div>", unsafe_allow_html=True)
-        else:
-            st.markdown(f"<div class='bot-msg'>🤖 {msg['text']}</div>", unsafe_allow_html=True)
+# Display chat messages
+for msg in st.session_state.chat_history:
+    if msg["role"] == "user":
+        st.markdown(f"<div class='user-msg'>🧑‍💻 {msg['text']}</div>", unsafe_allow_html=True)
+    else:
+        st.markdown(f"<div class='bot-msg'>🤖 {msg['text']}</div>", unsafe_allow_html=True)
 
-# Chat input at bottom (like ChatGPT)
-st.markdown("<br>", unsafe_allow_html=True)
+# Chat input bar at bottom
 query = st.chat_input("Type your question and press Enter...")
 
 if query:
-    try:
-        retriever = get_retriever(k=3)
-        qa = build_qa_chain(retriever, use_memory=False, use_llama=True)
-        with st.spinner("🤖 Thinking..."):
-            result = qa(query)
-
-        answer = result.get("result") or result.get("answer") or "Sorry, I couldn’t generate an answer."
-        docs = result.get("source_documents", [])
-
-        # Store conversation
-        st.session_state.chat_history.append({"role": "user", "text": query})
-        st.session_state.chat_history.append({"role": "assistant", "text": answer})
-
-        # Refresh chat display dynamically
-        st.experimental_rerun()
-
-    except Exception as e:
-        st.error(f"Error during QA generation: {e}")
-
-# ==============================
-# Optional: Sources display
-# ==============================
-if st.session_state.chat_history:
-    last_bot_msg = next((m for m in reversed(st.session_state.chat_history)
-                         if m["role"] == "assistant"), None)
-    if last_bot_msg:
-        st.markdown("<hr>", unsafe_allow_html=True)
-        st.subheader("📚 Sources (if available)")
+    retriever = get_retriever(k=3)
+    qa = build_qa_chain(retriever, use_memory=False, use_llama=True)
+    with st.spinner("🤖 Thinking..."):
         try:
-            st.markdown(format_sources(docs))
-        except Exception:
-            st.write("No sources found.")
+            result = qa(query)
+            answer = result.get("result") or result.get("answer") or "Sorry, I couldn’t generate an answer."
+        except Exception as e:
+            answer = f"⚠️ Error: {e}"
+
+    # Update chat
+    st.session_state.chat_history.append({"role": "user", "text": query})
+    st.session_state.chat_history.append({"role": "assistant", "text": answer})
+
+    # Refresh the chat (new Streamlit syntax)
+    st.rerun()
