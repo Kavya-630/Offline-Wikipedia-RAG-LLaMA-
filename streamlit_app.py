@@ -142,11 +142,17 @@ if query:
         try:
             result = qa(query)
             answer = result.get("result") or result.get("answer") or "Sorry, I couldn’t generate an answer."
+        
+            # ✅ Format question–answer pairs clearly
+            answer = answer.replace("Question:", "\n\n**Question:**").replace("Helpful Answer:", "\n\n**Helpful Answer:**")
+        
         except Exception as e:
             answer = f"⚠️ Error: {e}"
+
 
     # Append to history
     st.session_state.chat_history.append({"role": "user", "text": query})
     st.session_state.chat_history.append({"role": "assistant", "text": answer})
 
     st.rerun()
+
