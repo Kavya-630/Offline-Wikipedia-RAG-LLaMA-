@@ -115,40 +115,88 @@ with st.sidebar:
     st.write(f"**LLAMA Model Path:** {LLAMA_MODEL_PATH}")
     st.write(f"**Vectorstore Directory:** {PERSIST_DIR}")
 
-# =====================================
-# 💬 Chat Section
-# =====================================
-st.title("💬 Chat with Offline Wikipedia")
+# ==============================
+# 💬 Chat Section (Editable + Persistent)
+# ==============================
+st.title("Chat with Offline Wikipedia")
 
-# Store chat history
+# Initialize chat history if not exists
 if "chat_history" not in st.session_state:
     st.session_state.chat_history = []
+if "edit_index" not in st.session_state:
+    st.session_state.edit_index = None  # which message user wants to edit
 
-# Display previous messages
-for msg in st.session_state.chat_history:
+# Function to regenerate answer
+def generate_answer(question_text):
+    retriever = get_retriever(k=1)
+    qa = build_qa_chain(retriever, use_memory=False, use_llama=True)
+    with st.spinner("🤖 Thinking..."):
+        try:
+            result = qa(question_text)
+            answer = result.get("result") or result.get("answer") or "Sorry, I couldn’t generate an answer."
+            answer = answer.replace("Question:", "\n\n**Question:**").replace("Helpful Answer:", "\n\n**Helpful Answer:**")
+        except Exception as e:
+            answer = f"⚠️ Error: {e}"
+    return answer
+
+
+# Display chat history with Edit buttons
+for i, msg in enumerate(st.session_state.chat_history):
     if msg["role"] == "user":
-        st.markdown(f"<div class='user-msg'>🧑‍💻 {msg['text']}</div>", unsafe_allow_html=True)
+        col1, col2 = st.columns([9, 1])
+        with col1:
+            st.markdown(f"<div class='user-msg'>🧑‍💻 {msg['text']}</div>", unsafe_allow_html=True)
+        with col2:
+            if st.button("✏️", key=f"edit_{i}", help="Edit this question"):
+                st.session_state.edit_index = i
     else:
         st.markdown(f"<div class='bot-msg'>🤖 {msg['text']}</div>", unsafe_allow_html=True)
 
-#input box
 
-query = st.chat_input("Type your question and press Enter...")
+# If user wants to edit a previous question
+if st.session_state.edit_index is not None:
+    old_q = st.session_state.chat_history[st.session_state.edit_index]["text"]
+    st.info(f"✏️ Editing your question: *{old_q}*")
+    new_q = st.text_input("Edit your question:", value=old_q)
+    if st.button("🔄 Regenerate Answer"):
+        new_ans = generate_answer(new_q)
+        # Replace old question and its answer
+        st.session_state.chat_history[st.session_state.edit_index]["text"] = new_q
+        if st.session_state.edit_index + 1 < len(st.session_state.chat_history) and \
+           st.session_state.chat_history[st.session_state.edit_index + 1]["role"] == "assistant":
+            st.session_state.chat_history[st.session_state.edit_index + 1]["text"] = new_ans
+        else:
+            st.session_state.chat_history.append({"role": "assistant", "text": new_ans})
+        st.session_state.edit_index = None
+        st.rerun()
 
-if query:
-    retriever = get_retriever(k=1)
-    qa = build_qa_chain(retriever, use_memory=False, use_llama=True)
 
-    with st.spinner("🤖 Thinking..."):
-        try:
-            result = qa(query)
-            answer = result.get("result") or result.get("answer") or "Sorry, I couldn’t generate an answer."
-        except Exception as e:
-            answer = f"⚠️ Error: {e}"
+# Divider
+st.markdown("---")
 
-    st.session_state.chat_history.append({"role": "user", "text": query})
-    st.session_state.chat_history.append({"role": "assistant", "text": answer})
+# Input + Send Button (works both ways)
+col1, col2 = st.columns([8, 1])
+with col1:
+    query = st.chat_input("Type your question here...")
+with col2:
+    send_clicked = st.button("🚀 Send")
 
+# Process new question
+if query or send_clicked:
+    user_input = query if query else st.session_state.get("last_query", "")
+    if not user_input:
+        st.warning("⚠️ Please enter a question.")
+    else:
+        st.session_state["last_query"] = user_input
+        answer = generate_answer(user_input)
+
+        st.session_state.chat_history.append({"role": "user", "text": user_input})
+        st.session_state.chat_history.append({"role": "assistant", "text": answer})
+
+        st.rerun()
+
+# Add a Clear Chat button
+if st.button("🧹 Clear Chat"):
+    st.session_state.chat_history = []
+    st.session_state.edit_index = None
     st.rerun()
-
-  
