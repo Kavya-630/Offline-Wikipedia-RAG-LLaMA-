@@ -193,18 +193,69 @@ st.markdown("---")
 # ======================
 # 💬 Fixed Bottom Input
 # ======================
-st.markdown('<div class="fixed-input">', unsafe_allow_html=True)
-col1, col2, col3 = st.columns([8, 1, 1])
+# ======================
+# 💬 Bottom Search Bar (ChatGPT Style)
+# ======================
+st.markdown(
+    """
+    <style>
+    .chat-bar {
+        position: fixed;
+        bottom: 0;
+        left: 0;
+        right: 0;
+        background-color: #0e1117;
+        padding: 15px 20px;
+        border-top: 1px solid #333;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        gap: 10px;
+        z-index: 999;
+    }
+    .chat-input {
+        width: 70%;
+        padding: 10px 15px;
+        border-radius: 20px;
+        border: 1px solid #444;
+        background-color: #1e1e1e;
+        color: white;
+        font-size: 16px;
+    }
+    .chat-send {
+        background-color: #2563eb;
+        color: white;
+        border: none;
+        border-radius: 10px;
+        padding: 10px 18px;
+        cursor: pointer;
+        font-weight: bold;
+    }
+    .chat-send:hover { background-color: #1d4ed8; }
+    .chat-clear {
+        background-color: #dc2626;
+        color: white;
+        border: none;
+        border-radius: 10px;
+        padding: 10px 14px;
+        cursor: pointer;
+        font-weight: bold;
+    }
+    .chat-clear:hover { background-color: #b91c1c; }
+    </style>
+    <div class="chat-bar">
+        <form action="" method="post">
+            <input type="text" name="query" placeholder="Type your question..." class="chat-input" />
+            <button class="chat-send" type="submit">🚀 Send</button>
+            <button class="chat-clear" type="reset">🧹 Clear</button>
+        </form>
+    </div>
+    """,
+    unsafe_allow_html=True
+)
 
-with col1:
-    query = st.chat_input("Type your question here...")
-with col2:
-    send_clicked = st.button("🚀 Send")
-with col3:
-    clear_chat = st.button("🧹 Clear")
+query = st.chat_input("💬 Type your question here...")  # keeps Streamlit interactivity
 
-st.markdown("</div>", unsafe_allow_html=True)
-st.markdown("<div style='height:100px;'></div>", unsafe_allow_html=True)
 
 # ======================
 # 🚀 Process Input
@@ -222,4 +273,5 @@ if query or send_clicked:
         st.session_state.chat_history.append({"role": "user", "text": question})
         st.session_state.chat_history.append({"role": "assistant", "text": answer})
         st.rerun()
+
 
