@@ -134,7 +134,7 @@ with st.sidebar:
 # =====================================
 # 💬 Chat Section (Editable + Persistent)
 # =====================================
-st.title("💬 Chat with Offline Wikipedia")
+st.title("LlamaMind")
 
 if "chat_history" not in st.session_state:
     st.session_state.chat_history = []
@@ -222,3 +222,4 @@ if query or send_clicked:
         st.session_state.chat_history.append({"role": "user", "text": question})
         st.session_state.chat_history.append({"role": "assistant", "text": answer})
         st.rerun()
+
