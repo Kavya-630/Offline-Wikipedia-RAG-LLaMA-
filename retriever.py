@@ -53,7 +53,7 @@ def chunk_documents(docs, chunk_size=500, chunk_overlap=50):
 # =====================================
 # 🧩 Build or Load Vectorstore
 # =====================================
-def build_retriever(chunk_size=500, chunk_overlap=50):
+def build_retriever(chunk_size=500, chunk_overlap=50, k=3):
     """
     Build or load a Chroma vectorstore retriever.
     """
@@ -77,10 +77,10 @@ def build_retriever(chunk_size=500, chunk_overlap=50):
         vectorstore.persist()
         print(f"✅ Vectorstore created and saved to '{PERSIST_DIR}'")
 
-    retriever = vectorstore.as_retriever(search_kwargs={"k": 3})
-    print("🔍 Retriever ready.")
+    # use `k` for retriever search kwargs
+    retriever = vectorstore.as_retriever(search_kwargs={"k": k})
+    print(f"🔍 Retriever ready with top-{k} search.")
     return retriever
-
 
 # =====================================
 # 🧱 Backward Compatibility
@@ -96,3 +96,4 @@ if __name__ == "__main__":
     print("🔧 Testing retriever building...")
     retriever = build_retriever()
     print("✅ Retriever built successfully.")
+
