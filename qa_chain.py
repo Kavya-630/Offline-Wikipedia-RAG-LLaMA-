@@ -1,70 +1,48 @@
-import os
-import gdown
+# qa_chain.py
 from langchain.chains import RetrievalQA
-from langchain.memory import ConversationBufferMemory
-from langchain_community.llms import LlamaCpp, OpenAI
+from langchain.prompts import PromptTemplate
+from langchain.llms import HuggingFaceHub, OpenAI
+from langchain_community.llms import Ollama
 
-# ---------------------------------------------------------------------
-# LLaMA model path configuration
-# ---------------------------------------------------------------------
-LLAMA_PATH = os.getenv("LLAMA_MODEL_PATH", "models/phi-2.Q4_K_M")
-LLAMA_URL = "https://drive.google.com/uc?export=download&id=1bquBi_ccK4XDsatiHZsucysPUBXzmga6"
-# ✅ Auto-download model if missing
-os.makedirs(os.path.dirname(LLAMA_PATH), exist_ok=True)
-if not os.path.exists(LLAMA_PATH):
-    print(f"📥 Model not found locally. Downloading from {LLAMA_URL} ...")
-    try:
-        gdown.download(LLAMA_URL, LLAMA_PATH, quiet=False)
-        print(f"✅ Model downloaded successfully to {LLAMA_PATH}")
-    except Exception as e:
-        print(f"❌ Failed to download model: {e}")
-        raise FileNotFoundError(
-            f"Could not download LLaMA model. Please ensure the link is correct: {LLAMA_URL}"
-        )
-
-# ---------------------------------------------------------------------
-# QA chain builder
-# ---------------------------------------------------------------------
-def build_qa_chain(retriever, use_memory: bool = True, use_llama: bool = False):
+def build_qa_chain(retriever, model_type="huggingface", model_name="mistralai/Mistral-7B-Instruct-v0.2"):
     """
-    Build a RetrievalQA chain with either local LLaMA or OpenAI.
+    Build a Retrieval-QA chain that connects an LLM with the document retriever.
     """
-    if use_llama:
-        print(f"[INFO] Using local LLaMA model from {LLAMA_PATH}")
-        llm = LlamaCpp(
-            model_path=LLAMA_PATH,
-            temperature=0.2,
-            max_new_tokens=512,
-            n_ctx=4096,
-            verbose=False,
-            n_batch=512,
-            n_threads=4,
-        )
 
+    # Select model backend
+    if model_type == "huggingface":
+        llm = HuggingFaceHub(
+            repo_id=model_name,
+            model_kwargs={"temperature": 0.3, "max_new_tokens": 512}
+        )
+    elif model_type == "openai":
+        llm = OpenAI(model_name=model_name)
+    elif model_type == "ollama":
+        llm = Ollama(model=model_name)
     else:
-        OPENAI_KEY = os.getenv("OPENAI_API_KEY")
-        if not OPENAI_KEY:
-            raise ValueError("❌ OPENAI_API_KEY not found in environment variables.")
-        llm = OpenAI(openai_api_key=OPENAI_KEY, temperature=0.0)
+        raise ValueError(f"Unknown model type: {model_type}")
 
-    # Optional memory
-    memory = ConversationBufferMemory(memory_key="chat_history", return_messages=True) if use_memory else None
+    # Prompt
+    template = """You are a helpful AI assistant. Use the provided context to answer the question accurately.
+If the context does not contain the answer, say so.
 
-    qa = RetrievalQA.from_chain_type(
+Context:
+{context}
+
+Question:
+{question}
+
+Answer:"""
+
+    qa_prompt = PromptTemplate.from_template(template)
+
+    # Create QA Chain
+    chain = RetrievalQA.from_chain_type(
         llm=llm,
         chain_type="stuff",
         retriever=retriever,
+        chain_type_kwargs={"prompt": qa_prompt},
         return_source_documents=True,
-        memory=memory,
     )
-    return qa
 
-
-
-
-
-
-
-
-
-
+    return chain
