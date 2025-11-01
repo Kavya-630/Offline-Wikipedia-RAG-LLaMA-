@@ -53,22 +53,26 @@ def chunk_documents(docs, chunk_size=500, chunk_overlap=50):
 # =====================================
 # 🧩 Build or Load Vectorstore
 # =====================================
-def build_retriever(chunk_size=500, chunk_overlap=50, k=3):
+def build_retriever(docs=None, chunk_size=500, chunk_overlap=50):
     """
     Build or load a Chroma vectorstore retriever.
     """
     os.makedirs(PERSIST_DIR, exist_ok=True)
-
     embedding_model = HuggingFaceEmbeddings(model_name=EMBED_MODEL)
 
-    # Check if Chroma DB already exists
+    # If we already have a saved vectorstore, load it
     if os.path.exists(os.path.join(PERSIST_DIR, "index")) or len(os.listdir(PERSIST_DIR)) > 0:
         print(f"🔄 Loading existing Chroma vectorstore from '{PERSIST_DIR}'...")
         vectorstore = Chroma(persist_directory=PERSIST_DIR, embedding_function=embedding_model)
     else:
         print("🚀 Building new Chroma vectorstore...")
-        docs = load_documents()
+
+        # If docs not provided, load from local file
+        if docs is None:
+            docs = load_documents()
+
         chunks = chunk_documents(docs, chunk_size, chunk_overlap)
+
         vectorstore = Chroma.from_documents(
             documents=chunks,
             embedding=embedding_model,
@@ -77,9 +81,8 @@ def build_retriever(chunk_size=500, chunk_overlap=50, k=3):
         vectorstore.persist()
         print(f"✅ Vectorstore created and saved to '{PERSIST_DIR}'")
 
-    # use `k` for retriever search kwargs
-    retriever = vectorstore.as_retriever(search_kwargs={"k": k})
-    print(f"🔍 Retriever ready with top-{k} search.")
+    retriever = vectorstore.as_retriever(search_kwargs={"k": 3})
+    print("🔍 Retriever ready.")
     return retriever
 
 # =====================================
@@ -96,4 +99,5 @@ if __name__ == "__main__":
     print("🔧 Testing retriever building...")
     retriever = build_retriever()
     print("✅ Retriever built successfully.")
+
 
