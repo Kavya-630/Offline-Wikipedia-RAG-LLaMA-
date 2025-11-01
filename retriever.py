@@ -4,14 +4,12 @@ from langchain_community.embeddings import HuggingFaceEmbeddings
 from langchain_community.vectorstores import Chroma
 from langchain_community.document_loaders import TextLoader
 
-
 # =====================================
 # ⚙️ Default Config
 # =====================================
 PERSIST_DIR = os.getenv("PERSIST_DIR", "vectorstore")
 EMBED_MODEL = os.getenv("EMBED_MODEL", "sentence-transformers/all-MiniLM-L6-v2")
 DATA_PATH = os.getenv("DATA_PATH", "data/wiki_offline.txt")
-
 
 # =====================================
 # 📚 Load and Chunk Documents
@@ -30,11 +28,10 @@ def load_documents(data_path: str = DATA_PATH):
     docs = loader.load()
     return docs
 
-
 # =====================================
 # ✂️ Split Text into Chunks
 # =====================================
-def chunk_documents(docs, chunk_size=500, chunk_overlap=50):
+def chunk_documents(docs, chunk_size: int = 500, chunk_overlap: int = 50):
     """
     Split text into overlapping chunks for embedding.
     """
@@ -49,30 +46,35 @@ def chunk_documents(docs, chunk_size=500, chunk_overlap=50):
     print(f"✅ Created {len(split_docs)} chunks.")
     return split_docs
 
-
 # =====================================
 # 🧩 Build or Load Vectorstore
 # =====================================
-def build_retriever(docs=None, chunk_size=500, chunk_overlap=50):
+def build_or_load_vectorstore(
+    docs=None,
+    chunk_size: int = 500,
+    chunk_overlap: int = 50
+):
     """
     Build or load a Chroma vectorstore retriever.
     """
     os.makedirs(PERSIST_DIR, exist_ok=True)
     embedding_model = HuggingFaceEmbeddings(model_name=EMBED_MODEL)
 
-    # If we already have a saved vectorstore, load it
+    # ✅ Check if vectorstore already exists
     if os.path.exists(os.path.join(PERSIST_DIR, "index")) or len(os.listdir(PERSIST_DIR)) > 0:
         print(f"🔄 Loading existing Chroma vectorstore from '{PERSIST_DIR}'...")
         vectorstore = Chroma(persist_directory=PERSIST_DIR, embedding_function=embedding_model)
     else:
         print("🚀 Building new Chroma vectorstore...")
 
-        # If docs not provided, load from local file
+        # Load data if not provided
         if docs is None:
             docs = load_documents()
 
-        chunks = chunk_documents(docs, chunk_size, chunk_overlap)
+        # Split into chunks
+        chunks = chunk_documents(docs, chunk_size=chunk_size, chunk_overlap=chunk_overlap)
 
+        # Create vectorstore
         vectorstore = Chroma.from_documents(
             documents=chunks,
             embedding=embedding_model,
@@ -86,18 +88,15 @@ def build_retriever(docs=None, chunk_size=500, chunk_overlap=50):
     return retriever
 
 # =====================================
-# 🧱 Backward Compatibility
+# 🧱 Backward Compatibility Aliases
 # =====================================
-build_or_load_vectorstore = build_retriever
-get_retriever = build_retriever
-
+build_retriever = build_or_load_vectorstore
+get_retriever = build_or_load_vectorstore
 
 # =====================================
 # 🧪 Debug Run
 # =====================================
 if __name__ == "__main__":
     print("🔧 Testing retriever building...")
-    retriever = build_retriever()
+    retriever = build_or_load_vectorstore()
     print("✅ Retriever built successfully.")
-
-
