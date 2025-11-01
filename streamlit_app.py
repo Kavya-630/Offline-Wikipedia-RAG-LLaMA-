@@ -140,7 +140,7 @@ with st.sidebar:
 # 🧠 Helper – Answer Generation
 # =====================================
 def generate_answer(question_text):
-    retriever = get_retriever(k=1)
+    retriever = get_retriever(k=3)
     qa = build_qa_chain(retriever, use_memory=False, use_llama=True)
     with st.spinner("🤖 Thinking..."):
         try:
@@ -206,5 +206,6 @@ if query:
     answer = generate_answer(query)
     st.session_state.chat_history.append({"role": "assistant", "text": answer})
     st.rerun()
+
 
 
