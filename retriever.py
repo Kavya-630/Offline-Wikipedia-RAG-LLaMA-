@@ -1,27 +1,33 @@
+# retriever.py
 import os
-from typing import List
+from langchain_community.document_loaders import TextLoader, DirectoryLoader
 from langchain.text_splitter import RecursiveCharacterTextSplitter
-from langchain_community.embeddings import SentenceTransformerEmbeddings
-from langchain_community.vectorstores import Chroma
-from langchain_core.documents import Document  # ✅ updated import
+from langchain_community.embeddings import HuggingFaceEmbeddings
+from langchain_community.vectorstores import FAISS
 
-PERSIST_DIR = os.environ.get("PERSIST_DIR", "vectorstore")
-EMBED_MODEL = os.environ.get("EMBED_MODEL", "all-MiniLM-L6-v2")
+def build_retriever(data_dir="data", index_path="faiss_index"):
+    """
+    Build or load a FAISS retriever from local documents.
+    """
+    # Load all .txt files
+    loader = DirectoryLoader(data_dir, glob="**/*.txt", loader_cls=TextLoader)
+    docs = loader.load()
 
-def build_or_load_vectorstore(docs: List[Document],
-                              persist_directory: str = PERSIST_DIR,
-                              embedding_model: str = EMBED_MODEL,
-                              chunk_size: int = 500,
-                              chunk_overlap: int = 50):
-    splitter = RecursiveCharacterTextSplitter(chunk_size=chunk_size, chunk_overlap=chunk_overlap)
-    chunks = splitter.split_documents(docs)
+    # Split text into chunks
+    text_splitter = RecursiveCharacterTextSplitter(chunk_size=1000, chunk_overlap=200)
+    splits = text_splitter.split_documents(docs)
 
-    embedder = SentenceTransformerEmbeddings(model_name=embedding_model)
-    vectordb = Chroma.from_documents(chunks, embedder, persist_directory=persist_directory)
-    vectordb.persist()
-    return vectordb
+    # Embeddings
+    embeddings = HuggingFaceEmbeddings(model_name="sentence-transformers/all-MiniLM-L6-v2")
 
-def get_retriever(k: int = 3, persist_directory: str = PERSIST_DIR):
-    embedder = SentenceTransformerEmbeddings(model_name=EMBED_MODEL)
-    vectordb = Chroma(persist_directory=persist_directory, embedding_function=embedder)
-    return vectordb.as_retriever(search_kwargs={"k": k})
+    # Build or load FAISS index
+    if os.path.exists(index_path):
+        print("📦 Loading existing FAISS index...")
+        vectorstore = FAISS.load_local(index_path, embeddings, allow_dangerous_deserialization=True)
+    else:
+        print("🧩 Building new FAISS index...")
+        vectorstore = FAISS.from_documents(splits, embeddings)
+        vectorstore.save_local(index_path)
+
+    retriever = vectorstore.as_retriever(search_kwargs={"k": 4})
+    return retriever
