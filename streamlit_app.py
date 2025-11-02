@@ -163,7 +163,7 @@ def safe_generate(question: str, k: int = 3, require_context: bool = True):
 
     # Build QA chain using qa_chain helper (this uses local LLaMA if configured)
     try:
-        qa = build_qa_chain(retriever, use_memory=False, use_llama=True)
+        qa = build_qa_chain(retriever, model_type="ollama", model_name="phi-2.Q4_K_M")
     except FileNotFoundError as fe:
         # model missing — surface friendly message
         return (f"❌ LLaMA model not found at '{LLAMA_MODEL_PATH}'.\n"
@@ -272,3 +272,4 @@ st.caption(
     "If responses seem short or cut off, lower `max_new_tokens` in your `qa_chain.py` or "
     "increase `n_ctx` depending on the model. To reduce hallucinations set a lower `temperature` in your model config."
 )
+
