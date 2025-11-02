@@ -1,16 +1,17 @@
-# qa_chain.py (fixed for local Phi-2 model)
 from langchain.chains import RetrievalQA
 from langchain.prompts import PromptTemplate
 from langchain_community.llms import LlamaCpp
 from langchain_core.callbacks import CallbackManager
 from langchain_core.callbacks.streaming_stdout import StreamingStdOutCallbackHandler
+import os
+from dotenv import load_dotenv
 
-def build_qa_chain(retriever, model_path="models/phi-2.Q4_K_M.gguf"):
-    """
-    Build a Retrieval-QA chain using a local quantized Phi-2 (GGUF) model via llama-cpp.
-    """
+load_dotenv()
 
-    # Initialize llama-cpp local model
+def build_qa_chain(retriever, model_path=None, **kwargs):
+    if not model_path:
+        model_path = os.getenv("LLAMA_MODEL_PATH", "models/phi-2.Q4_K_M.gguf")
+
     llm = LlamaCpp(
         model_path=model_path,
         temperature=0.3,
@@ -21,9 +22,9 @@ def build_qa_chain(retriever, model_path="models/phi-2.Q4_K_M.gguf"):
     )
 
     template = """You are a helpful assistant.
-Use the provided context to answer the question accurately.
-If the context does not contain the answer, say:
-"I don’t have enough data to answer that."
+Use the context below to answer the question accurately.
+If the answer is not in the context, say:
+"I don't have enough data to answer that."
 
 Context:
 {context}
@@ -42,5 +43,4 @@ Answer:"""
         chain_type_kwargs={"prompt": prompt},
         return_source_documents=True,
     )
-
     return chain
