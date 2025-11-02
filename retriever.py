@@ -1,102 +1,27 @@
 import os
+from typing import List
 from langchain.text_splitter import RecursiveCharacterTextSplitter
-from langchain_community.embeddings import HuggingFaceEmbeddings
+from langchain_community.embeddings import SentenceTransformerEmbeddings
 from langchain_community.vectorstores import Chroma
-from langchain_community.document_loaders import TextLoader
+from langchain_core.documents import Document  # ✅ updated import
 
-# =====================================
-# ⚙️ Default Config
-# =====================================
-PERSIST_DIR = os.getenv("PERSIST_DIR", "vectorstore")
-EMBED_MODEL = os.getenv("EMBED_MODEL", "sentence-transformers/all-MiniLM-L6-v2")
-DATA_PATH = os.getenv("DATA_PATH", "data/wiki_offline.txt")
+PERSIST_DIR = os.environ.get("PERSIST_DIR", "vectorstore")
+EMBED_MODEL = os.environ.get("EMBED_MODEL", "all-MiniLM-L6-v2")
 
-# =====================================
-# 📚 Load and Chunk Documents
-# =====================================
-def load_documents(data_path: str = DATA_PATH):
-    """
-    Load text documents from a local .txt file.
-    """
-    if not os.path.exists(data_path):
-        raise FileNotFoundError(
-            f"❌ Data file not found at {data_path}. Please ensure 'wiki_offline.txt' exists."
-        )
+def build_or_load_vectorstore(docs: List[Document],
+                              persist_directory: str = PERSIST_DIR,
+                              embedding_model: str = EMBED_MODEL,
+                              chunk_size: int = 500,
+                              chunk_overlap: int = 50):
+    splitter = RecursiveCharacterTextSplitter(chunk_size=chunk_size, chunk_overlap=chunk_overlap)
+    chunks = splitter.split_documents(docs)
 
-    print(f"📄 Loading data from: {data_path}")
-    loader = TextLoader(data_path, encoding="utf-8")
-    docs = loader.load()
-    return docs
+    embedder = SentenceTransformerEmbeddings(model_name=embedding_model)
+    vectordb = Chroma.from_documents(chunks, embedder, persist_directory=persist_directory)
+    vectordb.persist()
+    return vectordb
 
-# =====================================
-# ✂️ Split Text into Chunks
-# =====================================
-def chunk_documents(docs, chunk_size: int = 500, chunk_overlap: int = 50):
-    """
-    Split text into overlapping chunks for embedding.
-    """
-    text_splitter = RecursiveCharacterTextSplitter(
-        chunk_size=chunk_size,
-        chunk_overlap=chunk_overlap,
-        length_function=len,
-        separators=["\n\n", "\n", ".", "!", "?", " ", ""],
-    )
-    print(f"✂️ Splitting documents into chunks of {chunk_size} with overlap {chunk_overlap}")
-    split_docs = text_splitter.split_documents(docs)
-    print(f"✅ Created {len(split_docs)} chunks.")
-    return split_docs
-
-# =====================================
-# 🧩 Build or Load Vectorstore
-# =====================================
-def build_or_load_vectorstore(
-    docs=None,
-    chunk_size: int = 500,
-    chunk_overlap: int = 50
-):
-    """
-    Build or load a Chroma vectorstore retriever.
-    """
-    os.makedirs(PERSIST_DIR, exist_ok=True)
-    embedding_model = HuggingFaceEmbeddings(model_name=EMBED_MODEL)
-
-    # ✅ Check if vectorstore already exists
-    if os.path.exists(os.path.join(PERSIST_DIR, "index")) or len(os.listdir(PERSIST_DIR)) > 0:
-        print(f"🔄 Loading existing Chroma vectorstore from '{PERSIST_DIR}'...")
-        vectorstore = Chroma(persist_directory=PERSIST_DIR, embedding_function=embedding_model)
-    else:
-        print("🚀 Building new Chroma vectorstore...")
-
-        # Load data if not provided
-        if docs is None:
-            docs = load_documents()
-
-        # Split into chunks
-        chunks = chunk_documents(docs, chunk_size=chunk_size, chunk_overlap=chunk_overlap)
-
-        # Create vectorstore
-        vectorstore = Chroma.from_documents(
-            documents=chunks,
-            embedding=embedding_model,
-            persist_directory=PERSIST_DIR,
-        )
-        vectorstore.persist()
-        print(f"✅ Vectorstore created and saved to '{PERSIST_DIR}'")
-
-    retriever = vectorstore.as_retriever(search_kwargs={"k": 3})
-    print("🔍 Retriever ready.")
-    return retriever
-
-# =====================================
-# 🧱 Backward Compatibility Aliases
-# =====================================
-build_retriever = build_or_load_vectorstore
-get_retriever = build_or_load_vectorstore
-
-# =====================================
-# 🧪 Debug Run
-# =====================================
-if __name__ == "__main__":
-    print("🔧 Testing retriever building...")
-    retriever = build_or_load_vectorstore()
-    print("✅ Retriever built successfully.")
+def get_retriever(k: int = 3, persist_directory: str = PERSIST_DIR):
+    embedder = SentenceTransformerEmbeddings(model_name=EMBED_MODEL)
+    vectordb = Chroma(persist_directory=persist_directory, embedding_function=embedder)
+    return vectordb.as_retriever(search_kwargs={"k": k})
