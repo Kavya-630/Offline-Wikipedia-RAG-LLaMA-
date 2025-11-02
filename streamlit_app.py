@@ -103,22 +103,23 @@ if "last_retrieved_docs" not in st.session_state:
 # Safe answer generation
 # ---------------------------
 def safe_generate(question: str, k: int = 3, require_context: bool = True):
+    """Return (answer_text, sources_list). If no context, use fallback safe mode."""
     try:
         retriever = get_retriever(k=k)
     except Exception as e:
         return f"❌ Vectorstore error: {e}", []
 
+    # Try to build the QA chain
     try:
         qa = build_qa_chain(
             retriever,
-            model_type="ollama",         # uses ollama locally
-            model_name="phi-2:Q4_K_M"    # or tinyllama if preferred
+            model_type="ollama",
+            model_name="phi-2:Q4_K_M"
         )
-    except FileNotFoundError:
-        return f"❌ Model file not found at '{LLAMA_MODEL_PATH}'.", []
     except Exception as e:
-        return f"❌ Could not load QA chain: {e}", []
+        return f"❌ Failed to create QA chain: {e}", []
 
+    # Run retrieval
     try:
         result = qa({"query": question})
     except Exception as e:
@@ -127,20 +128,28 @@ def safe_generate(question: str, k: int = 3, require_context: bool = True):
     answer = result.get("result") or result.get("answer") or ""
     docs = result.get("source_documents") or []
 
-    # check for valid retrieved context
-    if require_context:
-        valid = any(
-            (getattr(d, "page_content", "") and len(d.page_content.strip()) > 50)
-            for d in docs
-        )
-        if not valid:
-            return "I don't know based on the available Wikipedia data. Try indexing more topics.", []
+    # Check if retrieved context exists
+    has_context = any(
+        (getattr(d, "page_content", "") and len(d.page_content.strip()) > 50)
+        for d in docs
+    )
 
-    # fallback if model hallucinates or returns empty
-    if not answer.strip():
-        return "I don't know the answer based on the available data.", docs
+    # CASE 1: context exists — normal answer
+    if has_context:
+        return answer.strip(), docs
 
-    return answer.strip(), docs
+    # CASE 2: no context — hybrid fallback
+    if not has_context:
+        if any(word in question.lower() for word in ["ai", "artificial", "machine learning", "intelligence", "data", "neural", "technology"]):
+            # allow a short general model-based answer
+            try:
+                response = qa.llm.invoke(f"Give a brief, factual definition for: {question}")
+                return response.strip(), []
+            except Exception:
+                return "I'm not sure, but it seems related to general AI concepts.", []
+        else:
+            # safety fallback for unknowns
+            return "I don't know based on the indexed data. Try indexing more topics.", []
 
 # ---------------------------
 # Display chat history
@@ -183,4 +192,5 @@ if st.session_state.last_retrieved_docs:
 
 st.markdown("---")
 st.caption("Running Phi-2 quantized on CPU. Safe mode prevents hallucination if no relevant context is found.")
+
 
