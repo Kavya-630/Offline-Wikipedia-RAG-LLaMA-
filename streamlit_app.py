@@ -1,8 +1,10 @@
 import os
+import warnings
+import subprocess
 from dotenv import load_dotenv
 import streamlit as st
 
-# local modules
+# Local imports
 from wiki_loader import load_wiki_page
 from retriever import build_or_load_vectorstore, create_retriever
 from qa_chain import build_qa_chain
@@ -11,34 +13,54 @@ from utils import format_sources
 # ---------------------------
 # Environment setup
 # ---------------------------
-import warnings
 warnings.filterwarnings("ignore")
 os.environ["CHROMADB_TELEMETRY"] = "false"
-
 os.environ["TOKENIZERS_PARALLELISM"] = "false"
 os.environ["PYTORCH_JIT_LOG_LEVEL"] = "0"
 os.environ["STREAMLIT_DISABLE_TELEMETRY"] = "true"
 os.environ["STREAMLIT_DISABLE_UPDATE_CHECK"] = "true"
 
 load_dotenv()
-import os
-import gdown
 
-def ensure_model_exists():
-    model_path = "models/phi-2.Q4_K_M.gguf"
-    if not os.path.exists(model_path):
-        os.makedirs("models", exist_ok=True)
-        url = "https://drive.google.com/uc?export=download&id=1bquBi_ccK4XDsatiHZsucysPUBXzmga6"
-        print("Downloading Phi-2 model from Google Drive...")
-        gdown.download(url, model_path, quiet=False)
-        print(f"✅ Model downloaded and saved to {model_path}")
-
-# MODEL PATH — phi-2 quantized .gguf model
+# ---------------------------
+# Constants and paths
+# ---------------------------
 LLAMA_MODEL_PATH = os.getenv("LLAMA_MODEL_PATH", "models/phi-2.Q4_K_M.gguf")
 PERSIST_DIR = os.getenv("PERSIST_DIR", "vectorstore")
 EMBED_MODEL = os.getenv("EMBED_MODEL", "sentence-transformers/all-MiniLM-L6-v2")
 
 os.makedirs(PERSIST_DIR, exist_ok=True)
+
+
+# ---------------------------
+# Ensure model exists or auto-download
+# ---------------------------
+def ensure_model_exists():
+    """
+    Ensures that the Phi-2 model exists locally.
+    If missing, automatically runs `download_model.py` to fetch it.
+    """
+    model_path = LLAMA_MODEL_PATH
+    if not os.path.exists(model_path):
+        st.warning("Model file not found. Downloading Phi-2 model... ⏳")
+
+        try:
+            subprocess.run(["python", "download_model.py"], check=True)
+        except subprocess.CalledProcessError as e:
+            st.error(f"❌ Model download failed: {e}")
+            return False
+        except Exception as e:
+            st.error(f"⚠️ Unexpected error while downloading model: {e}")
+            return False
+
+        if os.path.exists(model_path):
+            st.success(f"✅ Model successfully downloaded to: {model_path}")
+            return True
+        else:
+            st.error("❌ Model download script completed, but file not found.")
+            return False
+    return True
+
 
 # ---------------------------
 # Streamlit UI setup
@@ -59,11 +81,13 @@ margin:8px 0;max-width:75%;margin-right:auto;}
 </style>
 """, unsafe_allow_html=True)
 
+
 # ---------------------------
-# Sidebar: Indexing and settings
+# Sidebar: Wikipedia Indexing
 # ---------------------------
 with st.sidebar:
     st.markdown("## 🧭 Wikipedia Indexing")
+
     topics_input = st.text_area("Topics (one per line)", value="Annamacharya\nRamananda\nQuantum Mechanics")
     max_pages = st.number_input("Max pages per topic", min_value=1, max_value=10, value=2)
     chunk_size = st.number_input("Chunk size", min_value=100, max_value=2000, value=500)
@@ -74,14 +98,18 @@ with st.sidebar:
         if not topics:
             st.warning("Please enter at least one topic.")
         else:
+            from wiki_loader import load_wiki_page
+            from retriever import build_or_load_vectorstore
             with st.spinner("Fetching Wikipedia pages..."):
-                docs = fetch_wikipedia_pages(topics, max_pages_per_topic=int(max_pages))
+                docs = []
+                for t in topics:
+                    docs.extend(load_wiki_page(t))
             if not docs:
                 st.error("No documents fetched. Try different topics or increase Max pages.")
             else:
                 with st.spinner("Building vectorstore (this may take a minute)..."):
                     try:
-                        build_or_load_vectorstore(docs, chunk_size=int(chunk_size), chunk_overlap=int(chunk_overlap))
+                        build_or_load_vectorstore(docs)
                         st.success(f"Indexed {len(docs)} pages to `{PERSIST_DIR}` ✅")
                     except Exception as e:
                         st.error(f"Failed to build vectorstore: {e}")
@@ -97,6 +125,7 @@ with st.sidebar:
     st.markdown("### Retrieval Settings")
     k_retrieval = st.slider("Retriever k (documents per query)", 1, 6, 3)
     safety_require_context = st.checkbox("Only answer from retrieved context", value=True)
+
     st.markdown("---")
     if st.button("🧹 Clear chat"):
         st.session_state.chat_history = []
@@ -105,7 +134,7 @@ with st.sidebar:
 
 
 # ---------------------------
-# Chat area
+# Chat UI
 # ---------------------------
 st.markdown('<div class="title">🧠 PhiMind — Reliable CPU RAG Chat</div>', unsafe_allow_html=True)
 
@@ -114,23 +143,25 @@ if "chat_history" not in st.session_state:
 if "last_retrieved_docs" not in st.session_state:
     st.session_state.last_retrieved_docs = []
 
+
 # ---------------------------
-# Safe answer generation
+# Safe generation with fallback
 # ---------------------------
 def safe_generate(question: str, k: int = 3, require_context: bool = True):
-    """Return (answer_text, sources_list). If no context, use fallback safe mode."""
+    """Generate answer safely. If no context, fall back to 'I don't know'."""
+    # Ensure model exists before use
+    if not ensure_model_exists():
+        return "❌ Model file missing. Could not download automatically.", []
+
+    # Try building retriever
     try:
-        retriever = create_retriever(k=3)
+        retriever = create_retriever(k=k)
     except Exception as e:
         return f"❌ Vectorstore error: {e}", []
 
-    # Try to build the QA chain
+    # Build QA chain
     try:
-        qa = build_qa_chain(
-            retriever,
-            model_type="ollama",
-            model_name="phi-2.Q4_K_M.gguf"
-        )
+        qa = build_qa_chain(retriever, model_path=LLAMA_MODEL_PATH)
     except Exception as e:
         return f"❌ Failed to create QA chain: {e}", []
 
@@ -143,46 +174,35 @@ def safe_generate(question: str, k: int = 3, require_context: bool = True):
     answer = result.get("result") or result.get("answer") or ""
     docs = result.get("source_documents") or []
 
-    # Check if retrieved context exists
+    # Context presence check
     has_context = any(
         (getattr(d, "page_content", "") and len(d.page_content.strip()) > 50)
         for d in docs
     )
 
-    # CASE 1: context exists — normal answer
     if has_context:
         return answer.strip(), docs
+    else:
+        return "I don't have enough data to answer that accurately.", []
 
-    # CASE 2: no context — hybrid fallback
-    if not has_context:
-        if any(word in question.lower() for word in ["ai", "artificial", "machine learning", "intelligence", "data", "neural", "technology"]):
-            # allow a short general model-based answer
-            try:
-                response = qa.llm.invoke(f"Give a brief, factual definition for: {question}")
-                return response.strip(), []
-            except Exception:
-                return "I'm not sure, but it seems related to general AI concepts.", []
-        else:
-            # safety fallback for unknowns
-            return "I don't know based on the indexed data. Try indexing more topics.", []
 
 # ---------------------------
-# Display chat history
+# Display chat messages
 # ---------------------------
 chat_area = st.container()
 with chat_area:
     if not st.session_state.chat_history:
         st.info("Ask a question below — e.g., 'Who was Annamacharya?'")
     for entry in st.session_state.chat_history:
-        role = entry["role"]
-        text = entry["text"]
+        role, text = entry["role"], entry["text"]
         if role == "user":
             st.markdown(f"<div class='user-msg'>🧑‍💻 {text}</div>", unsafe_allow_html=True)
         else:
             st.markdown(f"<div class='bot-msg'>{text}</div>", unsafe_allow_html=True)
 
+
 # ---------------------------
-# Bottom input (chat_input)
+# Bottom chat input
 # ---------------------------
 query = st.chat_input("Type your question here...")
 
@@ -207,13 +227,4 @@ if st.session_state.last_retrieved_docs:
         st.warning("Could not format sources.")
 
 st.markdown("---")
-st.caption("Running Phi-2 quantized on CPU. Safe mode prevents hallucination if no relevant context is found.")
-
-
-
-
-
-
-
-
-
+st.caption("Running Phi-2 quantized on CPU. If data is missing, the assistant safely declines to answer.")
