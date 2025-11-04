@@ -4,7 +4,7 @@ import streamlit as st
 
 # local modules
 from wiki_loader import load_wiki_page
-from retriever import build_or_load_vectorstore, get_retriever
+from retriever import build_or_load_vectorstore, create_retriever
 from qa_chain import build_qa_chain
 from utils import format_sources
 
@@ -192,6 +192,7 @@ if st.session_state.last_retrieved_docs:
 
 st.markdown("---")
 st.caption("Running Phi-2 quantized on CPU. Safe mode prevents hallucination if no relevant context is found.")
+
 
 
 
