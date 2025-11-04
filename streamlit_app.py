@@ -54,6 +54,19 @@ def ensure_model_exists():
             st.error("❌ Model download failed — file not found after download.")
             return False
     return True
+# ---------------------------
+# Preload model on startup
+# ---------------------------
+if not os.path.exists(LLAMA_MODEL_PATH):
+    st.warning("⚠️ Phi-2 model not found locally. Downloading before app starts...")
+    try:
+        gdown.download(MODEL_URL, LLAMA_MODEL_PATH, quiet=False)
+        st.success("✅ Phi-2 model downloaded successfully.")
+    except Exception as e:
+        st.error(f"❌ Failed to download Phi-2 model: {e}")
+else:
+    st.sidebar.success("✅ Phi-2 model already available locally.")
+
 
 
 # ---------------------------
@@ -208,3 +221,4 @@ if st.session_state.last_retrieved_docs:
 
 st.markdown("---")
 st.caption("Running Phi-2 quantized on CPU. If data is missing, the assistant safely declines to answer.")
+
