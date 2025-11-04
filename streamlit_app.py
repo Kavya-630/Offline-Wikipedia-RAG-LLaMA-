@@ -106,7 +106,7 @@ if "last_retrieved_docs" not in st.session_state:
 def safe_generate(question: str, k: int = 3, require_context: bool = True):
     """Return (answer_text, sources_list). If no context, use fallback safe mode."""
     try:
-        retriever = create_retriever(k=k)
+        retriever = create_retriever(k=3)
     except Exception as e:
         return f"❌ Vectorstore error: {e}", []
 
@@ -194,6 +194,7 @@ if st.session_state.last_retrieved_docs:
 
 st.markdown("---")
 st.caption("Running Phi-2 quantized on CPU. Safe mode prevents hallucination if no relevant context is found.")
+
 
 
 
