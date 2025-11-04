@@ -10,7 +10,7 @@ load_dotenv()
 
 def build_qa_chain(retriever, model_path=None, **kwargs):
     if not model_path:
-        model_path = os.getenv("LLAMA_MODEL_PATH", "models/phi-2.Q4_K_M")
+        model_path = os.getenv("LLAMA_MODEL_PATH", "models/phi-2.Q4_K_M.gguf")
 
     llm = LlamaCpp(
         model_path=model_path,
@@ -44,4 +44,5 @@ Answer:"""
         return_source_documents=True,
     )
     return chain
+
 
