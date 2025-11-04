@@ -1,14 +1,14 @@
 import os
 import warnings
-import gdown
+import subprocess
 from dotenv import load_dotenv
 import streamlit as st
+import gdown  # make sure this is imported
 
-# Local imports
-from wiki_loader import load_wiki_page
-from retriever import build_or_load_vectorstore, create_retriever
-from qa_chain import build_qa_chain
-from utils import format_sources
+# ---------------------------
+# Must be FIRST Streamlit command
+# ---------------------------
+st.set_page_config(page_title="PhiMind – Reliable CPU RAG", page_icon="🧠", layout="wide")
 
 # ---------------------------
 # Environment setup
@@ -23,42 +23,20 @@ os.environ["STREAMLIT_DISABLE_UPDATE_CHECK"] = "true"
 load_dotenv()
 
 # ---------------------------
-# Constants
+# Constants and paths
 # ---------------------------
-MODEL_URL = "https://drive.google.com/uc?export=download&id=1bquBi_ccK4XDsatiHZsucysPUBXzmga6"
 LLAMA_MODEL_PATH = os.getenv("LLAMA_MODEL_PATH", "models/phi-2.Q4_K_M.gguf")
+MODEL_URL = "https://drive.google.com/uc?export=download&id=1bquBi_ccK4XDsatiHZsucysPUBXzmga6"
 PERSIST_DIR = os.getenv("PERSIST_DIR", "vectorstore")
 EMBED_MODEL = os.getenv("EMBED_MODEL", "sentence-transformers/all-MiniLM-L6-v2")
 
-os.makedirs("models", exist_ok=True)
 os.makedirs(PERSIST_DIR, exist_ok=True)
 
-
 # ---------------------------
-# Auto-download Phi-2 model
-# ---------------------------
-def ensure_model_exists():
-    """Ensure model file exists locally; if not, download with gdown."""
-    if not os.path.exists(LLAMA_MODEL_PATH):
-        st.warning("⚠️ Phi-2 model not found. Downloading (~1.7 GB)... Please wait.")
-        try:
-            gdown.download(MODEL_URL, LLAMA_MODEL_PATH, quiet=False)
-        except Exception as e:
-            st.error(f"❌ Download failed: {e}")
-            return False
-
-        if os.path.exists(LLAMA_MODEL_PATH):
-            st.success("✅ Model successfully downloaded.")
-            return True
-        else:
-            st.error("❌ Model download failed — file not found after download.")
-            return False
-    return True
-# ---------------------------
-# Preload model on startup
+# Pre-download model before app starts
 # ---------------------------
 if not os.path.exists(LLAMA_MODEL_PATH):
-    st.warning("⚠️ Phi-2 model not found locally. Downloading before app starts...")
+    st.warning("⚠️ Phi-2 model not found locally. Downloading (~1.7 GB)... Please wait.")
     try:
         gdown.download(MODEL_URL, LLAMA_MODEL_PATH, quiet=False)
         st.success("✅ Phi-2 model downloaded successfully.")
@@ -66,7 +44,6 @@ if not os.path.exists(LLAMA_MODEL_PATH):
         st.error(f"❌ Failed to download Phi-2 model: {e}")
 else:
     st.sidebar.success("✅ Phi-2 model already available locally.")
-
 
 
 # ---------------------------
@@ -221,4 +198,5 @@ if st.session_state.last_retrieved_docs:
 
 st.markdown("---")
 st.caption("Running Phi-2 quantized on CPU. If data is missing, the assistant safely declines to answer.")
+
 
