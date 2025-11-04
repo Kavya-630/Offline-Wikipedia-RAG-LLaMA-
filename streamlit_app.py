@@ -21,6 +21,17 @@ os.environ["STREAMLIT_DISABLE_TELEMETRY"] = "true"
 os.environ["STREAMLIT_DISABLE_UPDATE_CHECK"] = "true"
 
 load_dotenv()
+import os
+import gdown
+
+def ensure_model_exists():
+    model_path = "models/phi-2.Q4_K_M.gguf"
+    if not os.path.exists(model_path):
+        os.makedirs("models", exist_ok=True)
+        url = "https://drive.google.com/uc?export=download&id=1bquBi_ccK4XDsatiHZsucysPUBXzmga6"
+        print("Downloading Phi-2 model from Google Drive...")
+        gdown.download(url, model_path, quiet=False)
+        print(f"✅ Model downloaded and saved to {model_path}")
 
 # MODEL PATH — phi-2 quantized .gguf model
 LLAMA_MODEL_PATH = os.getenv("LLAMA_MODEL_PATH", "models/phi-2.Q4_K_M.gguf")
@@ -197,6 +208,7 @@ if st.session_state.last_retrieved_docs:
 
 st.markdown("---")
 st.caption("Running Phi-2 quantized on CPU. Safe mode prevents hallucination if no relevant context is found.")
+
 
 
 
