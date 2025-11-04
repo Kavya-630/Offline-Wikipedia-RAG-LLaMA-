@@ -1,6 +1,6 @@
 import os
 import warnings
-import subprocess
+import gdown
 from dotenv import load_dotenv
 import streamlit as st
 
@@ -23,47 +23,41 @@ os.environ["STREAMLIT_DISABLE_UPDATE_CHECK"] = "true"
 load_dotenv()
 
 # ---------------------------
-# Constants and paths
+# Constants
 # ---------------------------
+MODEL_URL = "https://drive.google.com/uc?export=download&id=1bquBi_ccK4XDsatiHZsucysPUBXzmga6"
 LLAMA_MODEL_PATH = os.getenv("LLAMA_MODEL_PATH", "models/phi-2.Q4_K_M.gguf")
 PERSIST_DIR = os.getenv("PERSIST_DIR", "vectorstore")
 EMBED_MODEL = os.getenv("EMBED_MODEL", "sentence-transformers/all-MiniLM-L6-v2")
 
+os.makedirs("models", exist_ok=True)
 os.makedirs(PERSIST_DIR, exist_ok=True)
 
 
 # ---------------------------
-# Ensure model exists or auto-download
+# Auto-download Phi-2 model
 # ---------------------------
 def ensure_model_exists():
-    """
-    Ensures that the Phi-2 model exists locally.
-    If missing, automatically runs `download_model.py` to fetch it.
-    """
-    model_path = LLAMA_MODEL_PATH
-    if not os.path.exists(model_path):
-        st.warning("Model file not found. Downloading Phi-2 model... ⏳")
-
+    """Ensure model file exists locally; if not, download with gdown."""
+    if not os.path.exists(LLAMA_MODEL_PATH):
+        st.warning("⚠️ Phi-2 model not found. Downloading (~1.7 GB)... Please wait.")
         try:
-            subprocess.run(["python", "download_model.py"], check=True)
-        except subprocess.CalledProcessError as e:
-            st.error(f"❌ Model download failed: {e}")
-            return False
+            gdown.download(MODEL_URL, LLAMA_MODEL_PATH, quiet=False)
         except Exception as e:
-            st.error(f"⚠️ Unexpected error while downloading model: {e}")
+            st.error(f"❌ Download failed: {e}")
             return False
 
-        if os.path.exists(model_path):
-            st.success(f"✅ Model successfully downloaded to: {model_path}")
+        if os.path.exists(LLAMA_MODEL_PATH):
+            st.success("✅ Model successfully downloaded.")
             return True
         else:
-            st.error("❌ Model download script completed, but file not found.")
+            st.error("❌ Model download failed — file not found after download.")
             return False
     return True
 
 
 # ---------------------------
-# Streamlit UI setup
+# Streamlit page setup
 # ---------------------------
 st.set_page_config(page_title="PhiMind – Reliable CPU RAG", page_icon="🧠", layout="wide")
 
@@ -81,7 +75,6 @@ margin:8px 0;max-width:75%;margin-right:auto;}
 </style>
 """, unsafe_allow_html=True)
 
-
 # ---------------------------
 # Sidebar: Wikipedia Indexing
 # ---------------------------
@@ -98,8 +91,6 @@ with st.sidebar:
         if not topics:
             st.warning("Please enter at least one topic.")
         else:
-            from wiki_loader import load_wiki_page
-            from retriever import build_or_load_vectorstore
             with st.spinner("Fetching Wikipedia pages..."):
                 docs = []
                 for t in topics:
@@ -145,27 +136,23 @@ if "last_retrieved_docs" not in st.session_state:
 
 
 # ---------------------------
-# Safe generation with fallback
+# Safe generation function
 # ---------------------------
 def safe_generate(question: str, k: int = 3, require_context: bool = True):
-    """Generate answer safely. If no context, fall back to 'I don't know'."""
-    # Ensure model exists before use
+    """Generate answer safely with automatic model check."""
     if not ensure_model_exists():
-        return "❌ Model file missing. Could not download automatically.", []
+        return "❌ Model not found and could not be downloaded.", []
 
-    # Try building retriever
     try:
         retriever = create_retriever(k=k)
     except Exception as e:
         return f"❌ Vectorstore error: {e}", []
 
-    # Build QA chain
     try:
         qa = build_qa_chain(retriever, model_path=LLAMA_MODEL_PATH)
     except Exception as e:
         return f"❌ Failed to create QA chain: {e}", []
 
-    # Run retrieval
     try:
         result = qa({"query": question})
     except Exception as e:
@@ -174,12 +161,7 @@ def safe_generate(question: str, k: int = 3, require_context: bool = True):
     answer = result.get("result") or result.get("answer") or ""
     docs = result.get("source_documents") or []
 
-    # Context presence check
-    has_context = any(
-        (getattr(d, "page_content", "") and len(d.page_content.strip()) > 50)
-        for d in docs
-    )
-
+    has_context = any((getattr(d, "page_content", "") and len(d.page_content.strip()) > 50) for d in docs)
     if has_context:
         return answer.strip(), docs
     else:
@@ -200,9 +182,8 @@ with chat_area:
         else:
             st.markdown(f"<div class='bot-msg'>{text}</div>", unsafe_allow_html=True)
 
-
 # ---------------------------
-# Bottom chat input
+# Chat input
 # ---------------------------
 query = st.chat_input("Type your question here...")
 
@@ -213,7 +194,6 @@ if query:
     st.session_state.chat_history.append({"role": "assistant", "text": answer})
     st.session_state.last_retrieved_docs = docs
     st.rerun()
-
 
 # ---------------------------
 # Sources
