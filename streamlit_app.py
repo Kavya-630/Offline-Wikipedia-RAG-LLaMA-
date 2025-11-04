@@ -129,7 +129,7 @@ def safe_generate(question: str, k: int = 3, require_context: bool = True):
         qa = build_qa_chain(
             retriever,
             model_type="ollama",
-            model_name="phi-2:Q4_K_M"
+            model_name="phi-2.Q4_K_M.gguf"
         )
     except Exception as e:
         return f"❌ Failed to create QA chain: {e}", []
@@ -208,6 +208,7 @@ if st.session_state.last_retrieved_docs:
 
 st.markdown("---")
 st.caption("Running Phi-2 quantized on CPU. Safe mode prevents hallucination if no relevant context is found.")
+
 
 
 
