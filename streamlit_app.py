@@ -11,8 +11,11 @@ from utils import format_sources
 # ---------------------------
 # Environment setup
 # ---------------------------
+import warnings
+warnings.filterwarnings("ignore")
+os.environ["CHROMADB_TELEMETRY"] = "false"
+
 os.environ["TOKENIZERS_PARALLELISM"] = "false"
-os.environ["CHROMADB_TELEMETRY"] = "OFF"
 os.environ["PYTORCH_JIT_LOG_LEVEL"] = "0"
 os.environ["STREAMLIT_DISABLE_TELEMETRY"] = "true"
 os.environ["STREAMLIT_DISABLE_UPDATE_CHECK"] = "true"
@@ -194,6 +197,7 @@ if st.session_state.last_retrieved_docs:
 
 st.markdown("---")
 st.caption("Running Phi-2 quantized on CPU. Safe mode prevents hallucination if no relevant context is found.")
+
 
 
 
