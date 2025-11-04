@@ -4,6 +4,13 @@ import subprocess
 from dotenv import load_dotenv
 import streamlit as st
 import gdown  # make sure this is imported
+# ---------------------------
+# Internal imports (custom project files)
+# ---------------------------
+from utils.retriever import create_retriever, build_or_load_vectorstore
+from utils.qa_chain import build_qa_chain
+from utils.helpers import format_sources, ensure_model_exists
+from utils.wikipedia_loader import load_wiki_page
 
 # ---------------------------
 # Must be FIRST Streamlit command
@@ -198,5 +205,6 @@ if st.session_state.last_retrieved_docs:
 
 st.markdown("---")
 st.caption("Running Phi-2 quantized on CPU. If data is missing, the assistant safely declines to answer.")
+
 
 
