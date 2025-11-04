@@ -87,7 +87,8 @@ with st.sidebar:
     if st.button("🧹 Clear chat"):
         st.session_state.chat_history = []
         st.session_state.last_retrieved_docs = []
-        st.experimental_rerun()
+        st.rerun()
+
 
 # ---------------------------
 # Chat area
@@ -177,7 +178,8 @@ if query:
         answer, docs = safe_generate(query, k=k_retrieval, require_context=safety_require_context)
     st.session_state.chat_history.append({"role": "assistant", "text": answer})
     st.session_state.last_retrieved_docs = docs
-    st.experimental_rerun()
+    st.rerun()
+
 
 # ---------------------------
 # Sources
@@ -192,6 +194,7 @@ if st.session_state.last_retrieved_docs:
 
 st.markdown("---")
 st.caption("Running Phi-2 quantized on CPU. Safe mode prevents hallucination if no relevant context is found.")
+
 
 
 
